@@ -1,3 +1,4 @@
+import numpy as np
 class Layer:
     def __init__(self, input_num, output_num, bias):
         self.outputs = None

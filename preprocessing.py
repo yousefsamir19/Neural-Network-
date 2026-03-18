@@ -6,7 +6,7 @@ class preprocessing:
     def __init__(self):
         pass
 
-    def normalize_col(df: pd.DataFrame) -> pd.DataFrame:
+    def normalize_col(self,df: pd.DataFrame) -> pd.DataFrame:
         rename_map = {}
         for col in df.columns:
             if col.lower() == "species":
@@ -15,9 +15,9 @@ class preprocessing:
                 rename_map[col] = "OriginLocation"
         return df.rename(columns=rename_map)
 
-    def get_preprocessed_df() -> pd.DataFrame:
+    def get_preprocessed_df(self) -> pd.DataFrame:
         df = pd.read_csv("penguins.csv")
-        df = normalize_col(df)
+        df = self.normalize_col(df)
         null_columns = df.columns[df.isnull().any()]
         numeric_cols = df.select_dtypes(include="number").columns
         for col in null_columns:
@@ -27,7 +27,7 @@ class preprocessing:
         df["OriginLocation"] = le.fit_transform(df["OriginLocation"])
         return df
 
-    def split(data: pd.DataFrame):
+    def split(self,data: pd.DataFrame):
         encoder = LabelEncoder()
         data["Species"] = encoder.fit_transform(data["Species"])
 
