@@ -22,9 +22,6 @@ class mlp:
         self.hidden_neurons = hidden_neurons
         self.activation_function = activation_function # 1 for sigmoid 2 for tanh
         
-        if bias:
-            self.X_train["x0"] = 1 # make a column of ones when bias = 1 to include bias in calculations in the input layer
-        
         print(self.X_train.head())
         for i in range(hidden_layers + 1):
             if i == 0: # make the intialization of the input layer
@@ -67,8 +64,11 @@ class mlp:
                 input = np.array(x)
             else: # take the previous output as input for the current layer
                 input = self.layers[i-1].outputs
-                if self.bias:# if there is a bias add column of ones to the input to match the weights matrix shape 
-                    input = np.hstack((input, np.ones((input.shape[0], 1)))) 
+            if self.bias:# if there is a bias add column of ones to the input to match the weights matrix shape 
+                if input.ndim == 1:
+                    input = input.reshape(1, -1)
+
+                input = np.hstack((input, np.ones((input.shape[0], 1)))) 
             
             net = np.dot(input,self.layers[i].weights)
             self.layers[i].nets = net # store the net matix of the current layer
