@@ -83,7 +83,20 @@ class mlp:
             # print("layer ys ",i," = ",self.layers[i].outputs)
     
     def backpropagation(self):
-        pass  # raneem fn
+        # for i in range(len(self.layers)):
+        #      self.layers[i].errors = np.ones((self.layers[i].weights.shape[0],1))
+        #      print(self.layers[i].errors)
+        pass # raneem fn
 
         
-        
+    def update_weights(self,x):
+        for i in range(len(self.layers)):
+            if i == 0: 
+                    input = np.array(x)
+            else: 
+                    input = self.layers[i-1].outputs
+            if self.bias:
+                    if input.ndim == 1:
+                        input = input.reshape(1, -1)
+                    input = np.hstack((input, np.ones((input.shape[0], 1)))) 
+            self.layers[i].weights=self.layers[i].weights + self.learning_rate*np.dot(input,self.layers[i].errors)
