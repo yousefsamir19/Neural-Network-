@@ -6,10 +6,6 @@ var = pre.preprocessing()
 df = var.get_preprocessed_df()
 X_train, y_train, X_test, y_test,sc = var.split(df)
 
-model = mlp.mlp(X_train,y_train,1,2,0.1,1,1,0)
-sum =0
-model.forward_pass(X_train.iloc[0,:])
-model.backpropagation()
+model = mlp.mlp(X_train,y_train,2,[5, 3],0.1,1,1,0)
+model.train()
 vz.visualize(model)
-# model.update_weights(X_train.iloc[0,:])
-# vz.visualize(model)
