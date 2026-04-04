@@ -67,7 +67,7 @@ def train_model():
             learning_rate, epochs,
             bias, activation_fn
         )
-        model.train()
+        train_accuracy, train_cm = model.train()
 
         # ── Evaluate on test set ──────────────────────────────────────────
         # (replicate test() logic so we can capture the values)
@@ -80,11 +80,13 @@ def train_model():
         activations = [layer.outputs.flatten().tolist() for layer in model.layers]
 
         return jsonify({
-            "accuracy"        : round(accuracy, 2),
-            "loss"            : round(avg_loss, 4),
-            "confusion_matrix": cm,
-            "weights"         : weights,   # list[li] → 2-D list [src][dst]
-            "activations"     : activations,  # list[li] → 1-D list [node]
+            "accuracy"           : round(accuracy, 2),
+            "loss"               : round(avg_loss, 4),
+            "confusion_matrix"   : cm,
+            "train_accuracy"     : round(train_accuracy, 2),
+            "train_cm"           : train_cm,
+            "weights"            : weights,
+            "activations"        : activations,
         })
 
     except Exception as exc:

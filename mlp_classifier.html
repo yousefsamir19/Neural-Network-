@@ -386,6 +386,8 @@ body{display:flex}
     <div class="m-card" id="card-acc"><div class="m-card-title">Test Accuracy</div><div class="acc-val" id="acc-val">—</div></div>
     <div class="m-card" id="card-cm"><div class="m-card-title">Confusion Matrix</div><div id="cm-wrap"><div class="placeholder">Run the model<br>to see results</div></div></div>
     <div class="m-card" id="card-loss"><div class="m-card-title">Test MSE Loss</div><div class="loss-val" id="loss-val">—</div></div>
+    <div class="m-card" id="card-train-acc"><div class="m-card-title">Train Accuracy</div><div class="acc-val" id="train-acc-val">—</div></div>
+    <div class="m-card" id="card-train-cm"><div class="m-card-title">Train Confusion Matrix</div><div id="train-cm-wrap"><div class="placeholder">Run the model<br>to see results</div></div></div>
   </div>
 </aside>
 
@@ -808,6 +810,32 @@ async function runModel() {
     }
     html+='</div>';
     $('cm-wrap').innerHTML=html;
+
+    /* Training metrics */
+    if (data.train_accuracy != null) {
+      const taEl = $('train-acc-val');
+      taEl.classList.add('lit');
+      $('card-train-acc').classList.add('lit');
+      countUp(taEl, data.train_accuracy, 900, 1, '%');
+    }
+    if (data.train_cm) {
+      const cls=['Ad','Ch','Ge'], cm=data.train_cm;
+      let html='<div class="cm-grid">';
+      html+='<div class="cm-head"></div>';
+      cls.forEach(l=>{html+=`<div class="cm-head">${l}</div>`});
+      for (let i=0;i<3;i++) {
+        html+=`<div class="cm-cell lbl">${cls[i]}</div>`;
+        for (let j=0;j<3;j++) {
+          const diag=i===j;
+          const del=((i*3+j)*.046).toFixed(3);
+          html+=`<div class="cm-cell${diag?' diag':''}"
+            style="animation:popIn .30s cubic-bezier(.34,1.56,.64,1) both ${del}s;opacity:0">
+            ${cm[i]?.[j]??'–'}</div>`;
+        }
+      }
+      html+='</div>';
+      $('train-cm-wrap').innerHTML=html;
+    }
 
     stxt.textContent='complete';
 
