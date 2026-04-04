@@ -96,9 +96,11 @@ class mlp:
                             input = np.array(x)
                     else: 
                             input = self.layers[i-1].outputs
+                    
+                    if input.ndim == 1:
+                        input = input.reshape(1, -1)
+                    
                     if self.bias:
-                            if input.ndim == 1:
-                                input = input.reshape(1, -1)
                             input = np.hstack((input, np.ones((input.shape[0], 1)))) 
                     self.layers[i].weights=self.layers[i].weights + self.learning_rate*np.dot(input.T,self.layers[i].errors)
 
@@ -118,7 +120,7 @@ class mlp:
         output_layer = len(self.layers) - 1
         predicted = self.layer_num[output_layer].outputs
         print(predicted)
-        # for i in range(len(self.X_test)):
-        #     if acutal == predicted:
-        #         count+=1
-        # accuracy = (count / len(X_test)) * 100
+        for i in range(len(self.X_test)):
+            if acutal == predicted:
+                count+=1
+        accuracy = (count / len(X_test)) * 100
