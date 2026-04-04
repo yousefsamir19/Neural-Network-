@@ -1,4 +1,4 @@
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler,OneHotEncoder
 import pandas as pd
 import numpy as np
 
@@ -6,7 +6,7 @@ class preprocessing:
     def __init__(self):
         pass
 
-    def normalize_col(self,df: pd.DataFrame) -> pd.DataFrame:
+    def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
         rename_map = {}
         for col in df.columns:
             if col.lower() == "species":
@@ -15,9 +15,10 @@ class preprocessing:
                 rename_map[col] = "OriginLocation"
         return df.rename(columns=rename_map)
 
-    def get_preprocessed_df(self) -> pd.DataFrame:
+
+    def get_preprocessed_df() -> pd.DataFrame:
         df = pd.read_csv("penguins.csv")
-        df = self.normalize_col(df)
+        df = normalize_columns(df)
         null_columns = df.columns[df.isnull().any()]
         numeric_cols = df.select_dtypes(include="number").columns
         for col in null_columns:
@@ -27,33 +28,28 @@ class preprocessing:
         df["OriginLocation"] = le.fit_transform(df["OriginLocation"])
         return df
 
-    def split(self,data: pd.DataFrame):
+
+    def split(data: pd.DataFrame):
+
         encoder = LabelEncoder()
         data["Species"] = encoder.fit_transform(data["Species"])
 
-        # first_class = data[data["Species"] == -1]
-        # second_class = data[data["Species"] == 1]
-        # first_class= first_class.sample(frac=1).reset_index(drop=True)
-        # second_class= second_class.sample(frac=1).reset_index(drop=True)
-        # data = pd.concat([first_class, second_class], ignore_index=True)
+        train_data = data.iloc[np.r_[0:30, 50:80, 100:130]].copy()
+        test_data  = data.iloc[np.r_[30:50, 80:100, 130:150]].copy()
 
-        train_data = data.iloc[np.r_[0:30, 50:80, 100:130]]
-        test_data  = data.iloc[np.r_[30:50, 80:100, 130:150]]
+        X_train = train_data.drop(columns=["Species"])
+        y_train = train_data[["Species"]]
+
+        X_test = test_data.drop(columns=["Species"])
+        y_test = test_data[["Species"]]
 
         sc = MinMaxScaler()
-        train_data = sc.fit_transform(train_data)
-        test_data  = sc.transform(test_data)
+        X_train = pd.DataFrame(sc.fit_transform(X_train), columns=X_train.columns)
+        X_test  = pd.DataFrame(sc.transform(X_test), columns=X_test.columns)
+        enc = OneHotEncoder(sparse_output=False)
+        y_train_encoded = enc.fit_transform(y_train)
+        y_test_encoded = enc.transform(y_test)
+        y_train_encoded = pd.DataFrame(y_train_encoded)
+        y_test_encoded = pd.DataFrame(y_test_encoded)
+        return X_train, y_train_encoded, X_test, y_test_encoded, sc
 
-        train_data = pd.DataFrame(train_data)
-        test_data = pd.DataFrame(test_data)
-
-        X_train = train_data.iloc[:, 1:]
-        y_train = train_data.iloc[:, 0:1]
-
-        X_test = test_data.iloc[:, 1:]
-        y_test = test_data.iloc[:, 0:1]
-
-        # Keep original (unscaled) test coords for the scatter plot
-        test_original = test_data.copy()
-
-        return X_train, y_train, X_test, y_test, sc
