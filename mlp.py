@@ -113,42 +113,21 @@ class mlp:
                 self.update_weights(self.X_train.iloc[i,:])
     
     def test(self,X_test,y_test):
-        # Initialize lists to store individual predictions
-        y_true_indices = []
-        y_pred_indices = []
-        count = 0
+        y_true, y_pred = [], []
+        total_loss = 0.0
 
         for row in range(len(X_test)):
-            self.forward_pass(X_test.iloc[row,:])
-            actual = np.array(y_test.iloc[row,:])
-            
-            output_layer = len(self.layers) - 1
-            predicted = self.layers[output_layer].outputs
-            
-            # Convert one-hot arrays to single integer class labels
-            actual_class = np.argmax(actual)
-            pred_class = np.argmax(predicted)
-            
-            # Store labels for the confusion matrix
-            y_true_indices.append(actual_class)
-            y_pred_indices.append(pred_class)
-            
-            # accuracy logic (ex. comparing [1 0 0] to [1 0 0] = true)
-            pred_threshold = (predicted == predicted.max()).astype(int)
-            if (actual == pred_threshold).all():
-                count += 1
+            self.forward_pass(X_test.iloc[row, :])
+            actual    = np.array(y_test.iloc[row, :])
+            predicted = self.layers[-1].outputs.flatten()
 
-        #-------------METRICS-----------------
-        # Accuracy
-        accuracy = (count / len(X_test)) * 100
-        print(f"Accuracy: {accuracy}%")
+            y_true.append(int(np.argmax(actual)))
+            y_pred.append(int(np.argmax(predicted)))
+            total_loss += float(np.mean((actual - predicted) ** 2))
 
-        # Confusion Matrix
-        cm = confusion_matrix(y_true_indices, y_pred_indices)
-        class_labels = y_test.columns
-        df_cm = pd.DataFrame(cm, 
-                            index=[f"Actual {label}" for label in class_labels], 
-                            columns=[f"Predicted {label}" for label in class_labels])
-        print(df_cm)
+        accuracy = sum(t == p for t, p in zip(y_true, y_pred)) / len(y_true) * 100
+        avg_loss = total_loss / len(X_test)
+        cm       = confusion_matrix(y_true, y_pred).tolist()
+        return accuracy,avg_loss,cm
 
 

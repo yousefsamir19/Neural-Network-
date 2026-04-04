@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLP Classifier</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@300;400;500&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   TOKENS
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --bg:         #03030c;
+  --side:       #060612;
+  --panel:      #09091a;
+  --border:     #141430;
+  --border-hi:  #26265a;
+  --cyan:       #00e5ff;
+  --cyan-d:     rgba(0,229,255,.09);
+  --cyan-g:     rgba(0,229,255,.30);
+  --orange:     #ff7a30;
+  --orange-d:   rgba(255,122,48,.09);
+  --orange-g:   rgba(255,122,48,.30);
+  --violet:     #9d78f8;
+  --violet-d:   rgba(157,120,248,.09);
+  --violet-g:   rgba(157,120,248,.30);
+  --green:      #1de8a8;
+  --red:        #ff4f4f;
+  --text:       #8aaccb;
+  --text-hi:    #d8eaf8;
+  --text-lo:    #2d405a;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--text)}
+body{display:flex}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ═══════════════════════════════════════════════════════════════════
+   KEYFRAMES
+   ═══════════════════════════════════════════════════════════════════ */
+@keyframes spin    {to{transform:rotate(360deg)}}
+@keyframes blink   {0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes nodeIn  {0%{opacity:0;transform:scale(.3)}65%{transform:scale(1.1)}100%{opacity:1;transform:scale(1)}}
+@keyframes edgeIn  {from{opacity:0}to{opacity:1}}
+@keyframes rowIn   {from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes popIn   {0%{opacity:0;transform:scale(.85) translateY(5px)}70%{transform:scale(1.03) translateY(-1px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes checkIn {0%{transform:translate(-50%,-50%) scale(0)}60%{transform:translate(-50%,-50%) scale(1.35)}100%{transform:translate(-50%,-50%) scale(1)}}
+@keyframes scanLine{0%{left:-1%;opacity:0}5%{opacity:1}94%{opacity:1}100%{left:101%;opacity:0}}
+@keyframes toastIn {from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════════════════════════ */
+.sidebar{
+  width:262px;min-width:262px;
+  background:var(--side);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
+}
+
+.brand-wrap{
+  padding:20px 18px 15px;border-bottom:1px solid var(--border);
+  position:relative;overflow:hidden;
+}
+.brand-wrap::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.35;
+}
+.brand{
+  font-family:'Orbitron',monospace;font-size:21px;font-weight:900;
+  color:var(--cyan);letter-spacing:3px;line-height:1;
+  text-shadow:0 0 22px var(--cyan-g),0 0 50px rgba(0,229,255,.1);
+}
+.brand-sub{
+  margin-top:4px;font-family:'Fira Code',monospace;font-size:8.5px;
+  letter-spacing:2.8px;color:var(--text-lo);text-transform:uppercase;
+}
+
+/* API status badge */
+.api-status{
+  display:flex;align-items:center;gap:5px;margin-top:9px;
+  font-family:'Fira Code',monospace;font-size:8px;letter-spacing:1px;color:var(--text-lo);
+}
+.api-dot{
+  width:5px;height:5px;border-radius:50%;background:var(--text-lo);
+  transition:background .4s,box-shadow .4s;
+}
+.api-dot.on {background:var(--green);box-shadow:0 0 6px var(--green)}
+.api-dot.err{background:var(--red); box-shadow:0 0 6px var(--red)}
+
+/* Controls */
+.controls{padding:14px 16px;display:flex;flex-direction:column;gap:16px;flex:1}
+
+.cg{display:flex;flex-direction:column;gap:6px}
+.cg-label{
+  font-family:'Fira Code',monospace;font-size:8.5px;
+  letter-spacing:2.2px;text-transform:uppercase;color:var(--text-lo);
+}
+
+/* Radio */
+.radio-row{display:flex;gap:5px}
+.radio-opt{flex:1;position:relative}
+.radio-opt input{position:absolute;opacity:0;width:0;height:0}
+.radio-opt label{
+  display:flex;align-items:center;justify-content:center;
+  padding:7px 8px;border:1px solid var(--border);border-radius:3px;
+  cursor:pointer;font-size:11.5px;font-family:'Fira Code',monospace;
+  color:var(--text-lo);background:var(--panel);letter-spacing:.4px;
+  position:relative;overflow:hidden;
+  transition:border-color .25s,color .25s,box-shadow .3s;
+}
+.radio-opt label::before{
+  content:'';position:absolute;inset:0;
+  background:var(--cyan-d);transform:scaleX(0);transform-origin:left;
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+.radio-opt input:checked+label::before{transform:scaleX(1)}
+.radio-opt input:checked+label{
+  border-color:var(--cyan);color:var(--cyan);
+  box-shadow:0 0 9px var(--cyan-g);
+}
+.radio-opt label span{position:relative;z-index:1}
+
+/* Inputs */
+.ctrl-input{
+  background:var(--panel);border:1px solid var(--border);
+  border-left:2px solid var(--border);border-radius:3px;
+  padding:7px 10px;color:var(--text-hi);
+  font-family:'Fira Code',monospace;font-size:12.5px;width:100%;outline:none;
+  -moz-appearance:textfield;
+  transition:border-color .2s,border-left-color .2s,box-shadow .25s,background .2s;
+}
+.ctrl-input::-webkit-inner-spin-button,.ctrl-input::-webkit-outer-spin-button{-webkit-appearance:none}
+.ctrl-input:focus{
+  border-color:var(--cyan);border-left-color:var(--cyan);
+  background:rgba(0,229,255,.025);
+  box-shadow:0 0 9px var(--cyan-g),inset 2px 0 8px rgba(0,229,255,.04);
+}
+.ctrl-input:hover:not(:focus){border-color:var(--border-hi)}
+
+/* Checkbox */
+.cb-row{display:flex;align-items:center;gap:9px}
+.ctrl-cb{
+  appearance:none;width:16px;height:16px;
+  border:1px solid var(--border-hi);border-radius:2px;
+  background:var(--panel);cursor:pointer;position:relative;flex-shrink:0;
+  transition:border-color .2s,background .2s,box-shadow .25s,transform .15s;
+}
+.ctrl-cb:hover{border-color:var(--cyan);transform:scale(1.12)}
+.ctrl-cb:checked{
+  background:var(--cyan-d);border-color:var(--cyan);
+  box-shadow:0 0 7px var(--cyan-g);transform:scale(1);
+}
+.ctrl-cb:checked::after{
+  content:'✓';position:absolute;top:50%;left:50%;
+  font-size:10px;color:var(--cyan);
+  animation:checkIn .22s cubic-bezier(.34,1.56,.64,1) both;
+}
+.cb-lbl{font-size:12.5px;cursor:pointer;color:var(--text);transition:color .25s}
+.cb-row:has(.ctrl-cb:checked) .cb-lbl{color:var(--cyan)}
+
+/* Neuron rows */
+.neuron-list{display:flex;flex-direction:column;gap:5px}
+.neuron-row{display:flex;align-items:center;gap:7px}
+.neuron-tag{
+  font-family:'Fira Code',monospace;font-size:8.5px;letter-spacing:.8px;
+  color:var(--text-lo);width:50px;flex-shrink:0;
+}
+
+.divider{height:1px;background:var(--border);margin:2px 0}
+
+/* Run button */
+.run-wrap{padding:12px 16px 18px}
+.run-btn{
+  width:100%;padding:12px;background:transparent;
+  border:1px solid var(--cyan);border-radius:3px;
+  color:var(--cyan);font-family:'Orbitron',monospace;font-size:10.5px;
+  font-weight:700;letter-spacing:3px;cursor:pointer;
+  position:relative;overflow:hidden;
+  transition:color .25s,box-shadow .3s;
+}
+.run-btn::before{
+  content:'';position:absolute;inset:0;background:var(--cyan);
+  transform:translateX(-101%);
+  transition:transform .32s cubic-bezier(.4,0,.2,1);z-index:0;
+}
+.run-btn:hover::before{transform:translateX(0)}
+.run-btn:hover{color:#01010e;box-shadow:0 0 26px var(--cyan-g)}
+.run-btn:disabled{opacity:.35;cursor:not-allowed}
+.run-btn:disabled::before{display:none}
+.run-btn-inner{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:7px}
+.spinner{
+  display:none;width:9px;height:9px;
+  border:1.5px solid rgba(0,229,255,.2);border-top-color:var(--cyan);
+  border-radius:50%;animation:spin .65s linear infinite;
+}
+.running .spinner{display:block}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN CANVAS AREA
+   ═══════════════════════════════════════════════════════════════════ */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.top-bar{
+  padding:10px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.top-bar-title{font-family:'Fira Code',monospace;font-size:9px;letter-spacing:2px;color:var(--text-lo);text-transform:uppercase}
+.status-pill{display:flex;align-items:center;gap:5px;font-family:'Fira Code',monospace;font-size:9px;color:var(--text-lo)}
+.status-led{width:5px;height:5px;border-radius:50%;background:var(--text-lo);transition:background .4s,box-shadow .4s}
+.status-led.on{background:var(--green);box-shadow:0 0 7px var(--green);animation:blink 2s ease infinite}
+
+/* Dot-grid canvas */
+.canvas-wrap{flex:1;position:relative;overflow:hidden}
+.canvas-wrap::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle,#14143a 1px,transparent 1px);
+  background-size:30px 30px;opacity:.4;pointer-events:none;
+}
+
+#net-svg{width:100%;height:100%;display:block;position:relative;z-index:1;will-change:opacity}
+
+/* Scan line */
+.scan-line{
+  display:none;position:absolute;top:0;bottom:0;width:3px;
+  background:linear-gradient(to bottom,transparent,var(--cyan) 35%,var(--cyan) 65%,transparent);
+  box-shadow:0 0 18px 5px var(--cyan-g);pointer-events:none;z-index:10;
+}
+.scan-line.active{display:block;animation:scanLine .95s cubic-bezier(.4,0,.6,1) forwards}
+
+/* Legend */
+.legend{position:absolute;bottom:12px;right:12px;display:flex;gap:10px;z-index:5}
+.legend-item{display:flex;align-items:center;gap:4px;font-family:'Fira Code',monospace;font-size:8px;color:var(--text-lo)}
+.leg-dot{width:7px;height:7px;border-radius:50%;border:1.5px solid currentColor}
+.leg-dot.c{color:var(--cyan)}.leg-dot.o{color:var(--orange)}.leg-dot.v{color:var(--violet)}
+
+/* Error toast */
+.toast{
+  display:none;position:absolute;bottom:44px;left:50%;transform:translateX(-50%);
+  background:#1a050a;border:1px solid var(--red);border-radius:4px;
+  padding:9px 16px;font-family:'Fira Code',monospace;font-size:10px;color:var(--red);
+  z-index:20;white-space:nowrap;animation:toastIn .25s ease both;
+}
+.toast.show{display:block}
+
+/* ═══════════════════════════════════════════════════════════════════
+   METRICS PANEL
+   ═══════════════════════════════════════════════════════════════════ */
+.metrics{
+  width:192px;min-width:192px;background:var(--side);
+  border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;
+}
+.metrics-head{
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  font-family:'Orbitron',monospace;font-size:9.5px;font-weight:700;
+  letter-spacing:2px;color:var(--violet);position:relative;
+}
+.metrics-head::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--violet),transparent);opacity:.28;
+}
+.metrics-body{padding:12px;display:flex;flex-direction:column;gap:12px}
+.m-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:11px;
+  transition:border-color .4s,box-shadow .4s;
+}
+.m-card.lit{border-color:rgba(29,232,168,.22);box-shadow:0 0 10px rgba(29,232,168,.07)}
+.m-card-title{font-family:'Fira Code',monospace;font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:var(--text-lo);margin-bottom:8px}
+.acc-val{
+  font-family:'Orbitron',monospace;font-size:28px;font-weight:900;
+  color:var(--text-lo);letter-spacing:1px;
+  transition:color .6s,text-shadow .6s;
+}
+.acc-val.lit{color:var(--green);text-shadow:0 0 18px rgba(29,232,168,.38)}
+.loss-val{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;color:var(--text-lo);letter-spacing:1px;transition:color .6s,text-shadow .6s}
+.loss-val.lit{color:var(--orange);text-shadow:0 0 14px rgba(255,122,48,.32)}
+.placeholder{font-family:'Fira Code',monospace;font-size:8.5px;color:var(--text-lo);text-align:center;padding:12px 0;line-height:1.9}
+
+/* Confusion matrix */
+.cm-grid{display:grid;grid-template-columns:20px repeat(3,1fr);gap:2px}
+.cm-head{font-size:6.5px;font-family:'Fira Code',monospace;color:var(--text-lo);text-align:center;padding:2px 0}
+.cm-cell{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  font-size:9.5px;font-family:'Fira Code',monospace;border-radius:2px;
+  background:#0b0b1e;color:var(--text-lo);transition:background .4s,color .4s;
+}
+.cm-cell.diag{background:#081a12;color:var(--green)}
+.cm-cell.lbl{background:transparent;font-size:6.5px}
+
+/* Arch info */
+.arch-info{font-family:'Fira Code',monospace;font-size:8.5px;color:var(--text-lo);line-height:2}
+.arch-info span{color:var(--cyan)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ SIDEBAR ══════════════════════ -->
+<aside class="sidebar">
+  <div class="brand-wrap">
+    <div class="brand">MLP</div>
+    <div class="brand-sub">Neural Network Classifier</div>
+    <div class="api-status">
+      <div class="api-dot" id="api-dot"></div>
+      <span id="api-txt">checking api…</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="cg">
+      <div class="cg-label">Activation Function</div>
+      <div class="radio-row">
+        <div class="radio-opt"><input type="radio" name="actfn" id="r-sigmoid" value="sigmoid" checked><label for="r-sigmoid"><span>sigmoid</span></label></div>
+        <div class="radio-opt"><input type="radio" name="actfn" id="r-tanh"    value="tanh"   ><label for="r-tanh"   ><span>tanh</span></label></div>
+      </div>
+    </div>
+
+    <div class="cg">
+      <div class="cg-label">Epochs</div>
+      <input type="number" class="ctrl-input" id="epochs" value="100" min="1" max="5000">
+    </div>
+
+    <div class="cg">
+      <div class="cg-label">Learning Rate</div>
+      <input type="number" class="ctrl-input" id="lr" value="0.1" min="0.0001" max="10" step="0.001">
+    </div>
+
+    <div class="cg">
+      <div class="cg-label">Bias</div>
+      <div class="cb-row">
+        <input type="checkbox" class="ctrl-cb" id="bias-cb">
+        <label class="cb-lbl" for="bias-cb">Include bias nodes</label>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="cg">
+      <div class="cg-label">Number of Hidden Layers</div>
+      <input type="number" class="ctrl-input" id="num-layers" value="1" min="1" max="5">
+    </div>
+
+    <div class="cg">
+      <div class="cg-label">Neurons per Layer</div>
+      <div class="neuron-list" id="neuron-list"></div>
+    </div>
+  </div>
+
+  <div class="run-wrap">
+    <button class="run-btn" id="run-btn" onclick="runModel()">
+      <div class="run-btn-inner">
+        <div class="spinner"></div>
+        <span id="run-label">▶ RUN MODEL</span>
+      </div>
+    </button>
+  </div>
+</aside>
+
+<!-- ══════════════════════ MAIN ══════════════════════════ -->
+<main class="main">
+  <div class="top-bar">
+    <div class="top-bar-title">Network Architecture</div>
+    <div class="status-pill">
+      <div class="status-led" id="status-led"></div>
+      <span id="status-txt">idle</span>
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <svg id="net-svg"></svg>
+    <div class="scan-line" id="scan-line"></div>
+    <div class="toast" id="toast"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="leg-dot c"></div>input / hidden</div>
+      <div class="legend-item"><div class="leg-dot o"></div>bias</div>
+      <div class="legend-item"><div class="leg-dot v"></div>output</div>
+    </div>
+  </div>
+</main>
+
+<!-- ══════════════════════ METRICS ═══════════════════════ -->
+<aside class="metrics">
+  <div class="metrics-head">METRICS</div>
+  <div class="metrics-body">
+    <div class="m-card"><div class="m-card-title">Architecture</div><div class="arch-info" id="arch-info">—</div></div>
+    <div class="m-card" id="card-acc"><div class="m-card-title">Test Accuracy</div><div class="acc-val" id="acc-val">—</div></div>
+    <div class="m-card" id="card-cm"><div class="m-card-title">Confusion Matrix</div><div id="cm-wrap"><div class="placeholder">Run the model<br>to see results</div></div></div>
+    <div class="m-card" id="card-loss"><div class="m-card-title">Test MSE Loss</div><div class="loss-val" id="loss-val">—</div></div>
+  </div>
+</aside>
+
+<script>
+/* ─── Constants ──────────────────────────────────────────────────────────── */
+const API      = 'http://localhost:5000';
+const IN_SIZE  = 5;
+const OUT_SIZE = 3;
+const MAX_DISP = 7;           // max nodes shown per column before truncating
+
+const FEAT  = ['x₀ culmen len','x₁ culmen dep','x₂ flipper len','x₃ origin','x₄ body mass'];
+const FLBL  = ['x₀','x₁','x₂','x₃','x₄'];
+const CLBL  = ['Adelie','Chinstrp','Gentoo'];
+
+/* Layout constants — these prevent the stretching */
+const NODE_PITCH = 64;   // fixed px between node centres (vertical)
+const BIAS_GAP   = 54;   // px above top regular node for bias node
+const NR         = 22;   // regular node radius
+const BR         = 15;   // bias node radius
+
+let lastRun  = null;     // {weights, activations} from last API call
+let debTimer = null;
+let isBusy   = false;
+
+/* ─── DOM helpers ────────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const cfg = () => ({
+  actfn  : document.querySelector('input[name="actfn"]:checked')?.value ?? 'sigmoid',
+  epochs : Math.max(1, parseInt($('epochs').value)  || 100),
+  lr     : Math.max(1e-4, parseFloat($('lr').value) || 0.1),
+  bias   : $('bias-cb').checked,
+  nL     : Math.min(5, Math.max(1, parseInt($('num-layers').value) || 1)),
+  neurons: Array.from({length: parseInt($('num-layers').value)||1}, (_,i) =>
+             Math.max(1, parseInt($(`nrn-${i}`)?.value) || 4))
+});
+
+/* ─── Layer model ────────────────────────────────────────────────────────── */
+function buildLayers(c) {
+  const L = [];
+  L.push({size:IN_SIZE,  hasBias:c.bias, isIn:true,  isOut:false, lbl:'INPUT'});
+  c.neurons.forEach((n,i) =>
+    L.push({size:n, hasBias:c.bias, isIn:false, isOut:false, lbl:`H${i+1}`}));
+  L.push({size:OUT_SIZE, hasBias:false,  isIn:false, isOut:true,  lbl:'OUTPUT'});
+  return L;
+}
+
+/* ─── Position computation (FIXED spacing — no more stretching) ──────────── */
+function computePos(layers, W, H) {
+  const PAD   = 78;
+  const nL    = layers.length;
+  const xStep = nL > 1 ? (W - 2*PAD) / (nL-1) : 0;
+  const LABEL_H = 18;  // reserve bottom space for layer label
+
+  return layers.map((layer, li) => {
+    const x    = PAD + li * xStep;
+    const disp = Math.min(layer.size, MAX_DISP);
+
+    // Fixed-pitch vertical span, centred in usable height
+    const span      = (disp - 1) * NODE_PITCH;
+    const biasShift = layer.hasBias ? BIAS_GAP * 0.5 : 0;
+    // Midpoint: canvas centre, shifted slightly down to make room for bias above
+    const midY      = (H - LABEL_H) * 0.5 + biasShift;
+    const topY      = midY - span * 0.5;
+
+    const nodes = [], extra = layer.size - MAX_DISP;
+
+    for (let ni = 0; ni < disp; ni++) {
+      const y   = topY + ni * NODE_PITCH;
+      const lbl = layer.isIn  ? FLBL[ni]
+                : layer.isOut ? CLBL[ni] : `n${ni+1}`;
+      nodes.push({x, y, isBias:false, idx:ni, lbl,
+        trunc: ni===disp-1 && extra>0, extra: extra>0 ? extra+1 : 0});
+    }
+
+    if (layer.hasBias)
+      nodes.push({x, y: topY - BIAS_GAP, isBias:true, idx:disp, lbl:'1'});
+
+    return {x, nodes, layer, topY, botY: topY + span};
+  });
+}
+
+/* ─── Core SVG render ────────────────────────────────────────────────────── */
+function _render(animated) {
+  const svg = $('net-svg');
+  const W = svg.clientWidth||800, H = svg.clientHeight||560;
+  const c = cfg(), layers = buildLayers(c);
+  const pos = computePos(layers, W, H);
+  const rd  = lastRun;
+
+  /* edge count → show weight labels only on small nets */
+  const eCount = layers.slice(0,-1).reduce((a,l,i) =>
+    a + (Math.min(l.size,MAX_DISP) + (l.hasBias?1:0)) * Math.min(layers[i+1].size,MAX_DISP), 0);
+  const showWts = eCount <= 30;
+
+  /* Determine output winner */
+  let winnerIdx = -1;
+  if (rd?.activations) {
+    const outActs = rd.activations[rd.activations.length - 1];
+    if (outActs) winnerIdx = outActs.indexOf(Math.max(...outActs));
+  }
+
+  /* ── defs ─────────────────────────────────────────────────────────────── */
+  let s = `<defs>
+    <filter id="fc" x="-55%" y="-55%" width="210%" height="210%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="fo" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="4.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="fv" x="-55%" y="-55%" width="210%" height="210%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="fw" x="-55%" y="-55%" width="210%" height="210%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <radialGradient id="gc" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00e5ff" stop-opacity=".17"/>
+      <stop offset="100%" stop-color="#00e5ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="go" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff7a30" stop-opacity=".22"/>
+      <stop offset="100%" stop-color="#ff7a30" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gv" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#9d78f8" stop-opacity=".20"/>
+      <stop offset="100%" stop-color="#9d78f8" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gw" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1de8a8" stop-opacity=".30"/>
+      <stop offset="100%" stop-color="#1de8a8" stop-opacity="0"/></radialGradient>
+  </defs>`;
+
+  /* ── Edges ────────────────────────────────────────────────────────────── */
+  for (let li = 0; li < pos.length-1; li++) {
+    const srcP = pos[li], dstP = pos[li+1];
+    const gd   = animated ? `${(li*0.07).toFixed(2)}s` : '0s';
+    const gdur  = animated ? '0.32s' : '0s';
+
+    s += `<g style="animation:edgeIn ${gdur} ease both ${gd};opacity:${animated?0:1}">`;
+
+    srcP.nodes.forEach((src, si) => {
+      dstP.nodes.filter(d => !d.isBias).forEach((dst, di) => {
+        /* weights[li] is the weight matrix for viz layer li → li+1
+           rows = src nodes (including bias at end), cols = dst nodes */
+        const wt = rd?.weights?.[li]?.[src.idx]?.[dst.idx] ?? null;
+        const isBiasEdge = src.isBias;
+
+        let stroke = isBiasEdge ? 'rgba(255,122,48,.16)' : 'rgba(18,28,56,.95)';
+        let sw = isBiasEdge ? 1.1 : 0.75, op = 0.8;
+
+        if (rd && wt !== null) {
+          const mag = Math.min(Math.abs(wt), 2.5) / 2.5;
+          stroke = wt > 0
+            ? `rgba(0,229,255,${(.06 + mag*.38).toFixed(2)})`
+            : `rgba(255,79,79,${(.06 + mag*.38).toFixed(2)})`;
+          sw = 0.7 + mag * 1.4;
+          op = 0.65 + mag * 0.35;
+        }
+
+        const len = Math.hypot(dst.x-src.x, dst.y-src.y).toFixed(1);
+
+        if (animated) {
+          const eDel = (li*0.08 + di*0.004).toFixed(3);
+          s += `<line x1="${src.x}" y1="${src.y}" x2="${dst.x}" y2="${dst.y}"
+            stroke="${stroke}" stroke-width="${sw}" opacity="${op}"
+            stroke-dasharray="${len}" stroke-dashoffset="${len}">
+            <animate attributeName="stroke-dashoffset"
+              from="${len}" to="0" dur="0.50s" begin="${eDel}s" fill="freeze"/>
+          </line>`;
+        } else {
+          s += `<line x1="${src.x}" y1="${src.y}" x2="${dst.x}" y2="${dst.y}"
+            stroke="${stroke}" stroke-width="${sw}" opacity="${op}"/>`;
+        }
+
+        /* Weight label on small networks */
+        if (showWts && wt !== null && !src.trunc && !dst.trunc) {
+          const mx = (src.x+dst.x)/2 + (si - srcP.nodes.length/2)*1.5;
+          const my = (src.y+dst.y)/2 + (di - dstP.nodes.filter(d=>!d.isBias).length/2)*1.5;
+          const col = wt > 0 ? '#00e5ff' : '#ff5050';
+          s += `<rect x="${mx-18}" y="${my-7}" width="36" height="13" rx="2" fill="#030310" opacity=".9"/>
+            <text x="${mx}" y="${my+4}" text-anchor="middle"
+              fill="${col}" font-size="7.5" font-family="Fira Code,monospace">${wt.toFixed(3)}</text>`;
+        }
+      });
+    });
+    s += `</g>`;
+  }
+
+  /* ── Layer labels ─────────────────────────────────────────────────────── */
+  const LABEL_Y = H - 8;
+  pos.forEach(({x, layer}) => {
+    const col = layer.isOut ? '#5a4ea8' : layer.isIn ? '#243050' : '#1e3860';
+    s += `<text x="${x}" y="${LABEL_Y}" text-anchor="middle"
+      fill="${col}" font-size="8.5" font-family="Fira Code,monospace"
+      letter-spacing="2">${layer.lbl}</text>`;
+  });
+
+  /* ── Nodes ────────────────────────────────────────────────────────────── */
+  pos.forEach(({nodes, layer}, li) => {
+    nodes.forEach((node, ni) => {
+      const r = node.isBias ? BR : NR;
+      const isOut = layer.isOut;
+      const isWin = isOut && node.idx === winnerIdx;
+
+      /* Visual theme per node type */
+      let fill='#05051a', stroke='#00e5ff', flt='url(#fc)', tc='#00e5ff', gId='gc';
+      if      (node.isBias) { fill='#100808'; stroke='#ff7a30'; flt='url(#fo)'; tc='#ff7a30'; gId='go'; }
+      else if (isOut)       { fill='#080518'; stroke='#9d78f8'; flt='url(#fv)'; tc='#9d78f8'; gId='gv'; }
+      else if (layer.isIn)  { fill='#050518'; stroke='#1a2a4a'; flt='';         tc='#2a5080'; gId=null; }
+
+      /* Winner output node gets green treatment */
+      if (isWin) { stroke='#1de8a8'; flt='url(#fw)'; tc='#1de8a8'; gId='gw'; }
+
+      /* Per-node spring-in delay */
+      const nd  = animated ? `${(li*0.09 + ni*0.026 + (node.isBias?.01:.045)).toFixed(3)}s` : '0s';
+      const nanim = animated ? `animation:nodeIn .40s cubic-bezier(.34,1.56,.64,1) both ${nd};` : '';
+
+      /* Translate group: CSS scale transform-origin = node centre */
+      s += `<g transform="translate(${node.x},${node.y})" style="${nanim}">`;
+
+      /* Halo glow disc */
+      if (!layer.isIn || node.isBias)
+        s += `<circle cx="0" cy="0" r="${r+10}" fill="url(#${gId??'gc'})" opacity="${node.isBias?.85:isWin?.7:.45}"/>`;
+
+      /* Winner extra ring */
+      if (isWin)
+        s += `<circle cx="0" cy="0" r="${r+4}" fill="none" stroke="#1de8a8" stroke-width="1" opacity=".5" stroke-dasharray="3 3"/>`;
+
+      /* Main circle */
+      s += `<circle cx="0" cy="0" r="${r}" fill="${fill}" stroke="${stroke}"
+        stroke-width="1.5" ${flt?`filter="${flt}"`:''}/>`;
+
+      /* ── Node label ─── */
+      let top = node.lbl, bot = null;
+
+      if (node.isBias) {
+        top = '1';
+      } else if (rd && !layer.isIn) {
+        /* activations[li-1] = outputs of model layer (li-1)
+           li=0 is input (no activation), li=1+ maps to activations[0+] */
+        const acts = rd.activations?.[li - 1];
+        const val  = acts?.[node.idx];
+        if (val != null) {
+          top = val.toFixed(3);
+          if (isOut) bot = CLBL[node.idx];
+        }
+      }
+      if (node.trunc) top = `+${node.extra}`;
+
+      if (bot) {
+        s += `<text x="0" y="-2"  text-anchor="middle" fill="${tc}"    font-size="7.5" font-family="Fira Code,monospace">${top}</text>
+              <text x="0" y="8.5" text-anchor="middle" fill="${tc}99"  font-size="6.5" font-family="Fira Code,monospace">${bot}</text>`;
+      } else {
+        s += `<text x="0" y="4"   text-anchor="middle" fill="${tc}"    font-size="8.5" font-family="Fira Code,monospace">${top}</text>`;
+      }
+
+      /* Feature tooltip below input nodes */
+      if (layer.isIn && !node.isBias && !node.trunc) {
+        s += `<text x="0" y="${r+12}" text-anchor="middle" fill="#1e3858"
+          font-size="7" font-family="Fira Code,monospace">${FEAT[node.idx]??''}</text>`;
+      }
+
+      s += `</g>`;
+    });
+  });
+
+  svg.innerHTML = s;
+  _updateArch(layers, c);
+}
+
+/* ─── Debounced draw (for config changes) ────────────────────────────────── */
+function drawNetwork() {
+  if (isBusy) return;
+  clearTimeout(debTimer);
+  const svg = $('net-svg');
+  svg.style.transition = 'opacity .09s ease';
+  svg.style.opacity    = '0.06';
+  debTimer = setTimeout(() => {
+    _render(false);
+    svg.style.transition = 'opacity .20s ease';
+    svg.style.opacity    = '1';
+  }, 110);
+}
+
+/* ─── Architecture summary ───────────────────────────────────────────────── */
+function _updateArch(layers, c) {
+  $('arch-info').innerHTML = layers.map((l,i) => {
+    if (i===0)               return `Input&nbsp; <span>${l.size}</span>`;
+    if (i===layers.length-1) return `Output <span>${l.size}</span>`;
+    return `H${i}&nbsp;&nbsp;&nbsp;&nbsp; <span>${l.size}</span>`;
+  }).join('<br>') + `<br>Bias&nbsp;&nbsp;&nbsp;&nbsp; <span>${c.bias?'on':'off'}</span>`;
+}
+
+/* ─── Count-up animation ─────────────────────────────────────────────────── */
+function countUp(el, to, dur, dec, suf) {
+  const t0 = performance.now();
+  const tick = now => {
+    const p = Math.min((now-t0)/dur, 1);
+    const e = 1 - Math.pow(1-p, 3);
+    el.textContent = (to*e).toFixed(dec) + suf;
+    if (p<1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+/* ─── Toast ──────────────────────────────────────────────────────────────── */
+let toastTimer;
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+/* ─── Neuron row refresh with slide-in ───────────────────────────────────── */
+function refreshNeuronInputs() {
+  const n    = Math.min(5, Math.max(1, parseInt($('num-layers').value)||1));
+  const list = $('neuron-list');
+  const old  = Array.from(list.querySelectorAll('input')).map(i=>i.value);
+
+  list.style.transition = 'opacity .11s ease';
+  list.style.opacity    = '0';
+
+  setTimeout(() => {
+    list.innerHTML = '';
+    for (let i=0; i<n; i++) {
+      const row = document.createElement('div');
+      row.className = 'neuron-row';
+      row.style.cssText = `animation:rowIn .26s cubic-bezier(.34,1.56,.64,1) both;animation-delay:${(i*.05).toFixed(2)}s;opacity:0`;
+      row.innerHTML = `
+        <span class="neuron-tag">Layer ${i+1}</span>
+        <input type="number" class="ctrl-input" id="nrn-${i}"
+          value="${old[i]??4}" min="1" max="32" style="flex:1" oninput="drawNetwork()">`;
+      list.appendChild(row);
+    }
+    list.style.transition = 'opacity .18s ease';
+    list.style.opacity    = '1';
+    drawNetwork();
+  }, 110);
+}
+
+/* ─── API health check ───────────────────────────────────────────────────── */
+async function checkAPI() {
+  const dot = $('api-dot'), txt = $('api-txt');
+  try {
+    const r = await fetch(`${API}/api/health`, {signal: AbortSignal.timeout(2500)});
+    if (r.ok) { dot.className='api-dot on'; txt.textContent='api connected'; return true; }
+  } catch(_) {}
+  dot.className='api-dot err'; txt.textContent='api offline — start app.py';
+  return false;
+}
+
+/* ─── Run model ──────────────────────────────────────────────────────────── */
+async function runModel() {
+  if (isBusy) return;
+
+  const online = await checkAPI();
+  if (!online) { showToast('⚠  Cannot reach API — run: python app.py'); return; }
+
+  const btn=$('run-btn'), lbl=$('run-label'), svg=$('net-svg'),
+        led=$('status-led'), stxt=$('status-txt'), scan=$('scan-line');
+  const c = cfg();
+
+  btn.disabled=true; btn.classList.add('running');
+  lbl.textContent='TRAINING…';
+  led.className='status-led on'; stxt.textContent='running';
+  isBusy=true;
+
+  /* Fade out & scan */
+  svg.style.transition='opacity .18s ease'; svg.style.opacity='0';
+  scan.classList.remove('active'); void scan.offsetWidth; scan.classList.add('active');
+
+  try {
+    const resp = await fetch(`${API}/api/train`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        hidden_layers      : c.nL,
+        hidden_neurons     : c.neurons,
+        learning_rate      : c.lr,
+        epochs             : c.epochs,
+        bias               : c.bias,
+        activation_function: c.actfn
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(()=>({error:'Server error'}));
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+
+    /* Store for visualization */
+    lastRun = { weights: data.weights, activations: data.activations };
+
+    /* Render with animations */
+    _render(true);
+    svg.style.transition='opacity .30s ease'; svg.style.opacity='1';
+
+    /* Metrics count-up */
+    const accEl  = $('acc-val');
+    const lossEl = $('loss-val');
+    accEl.classList.add('lit');  lossEl.classList.add('lit');
+    $('card-acc').classList.add('lit'); $('card-loss').classList.add('lit');
+    countUp(accEl,  data.accuracy, 900, 1, '%');
+    countUp(lossEl, data.loss,     700, 4, '');
+
+    /* Confusion matrix with staggered pop-in */
+    const cls=['Ad','Ch','Ge'], cm=data.confusion_matrix;
+    let html='<div class="cm-grid">';
+    html+='<div class="cm-head"></div>';
+    cls.forEach(l=>{html+=`<div class="cm-head">${l}</div>`});
+    for (let i=0;i<3;i++) {
+      html+=`<div class="cm-cell lbl">${cls[i]}</div>`;
+      for (let j=0;j<3;j++) {
+        const diag=i===j;
+        const del=((i*3+j)*.046).toFixed(3);
+        html+=`<div class="cm-cell${diag?' diag':''}"
+          style="animation:popIn .30s cubic-bezier(.34,1.56,.64,1) both ${del}s;opacity:0">
+          ${cm[i]?.[j]??'–'}</div>`;
+      }
+    }
+    html+='</div>';
+    $('cm-wrap').innerHTML=html;
+
+    stxt.textContent='complete';
+
+  } catch(err) {
+    svg.style.opacity='1';
+    stxt.textContent='error';
+    showToast('Error: ' + err.message);
+    console.error(err);
+  } finally {
+    btn.disabled=false; btn.classList.remove('running');
+    lbl.textContent='▶ RUN MODEL';
+    scan.classList.remove('active');
+    isBusy=false;
+  }
+}
+
+/* ─── Wire events ────────────────────────────────────────────────────────── */
+$('num-layers').addEventListener('input', refreshNeuronInputs);
+$('bias-cb').addEventListener('change', drawNetwork);
+['r-sigmoid','r-tanh'].forEach(id => $(id).addEventListener('change', drawNetwork));
+new ResizeObserver(() => drawNetwork()).observe($('net-svg'));
+
+/* ─── Init ───────────────────────────────────────────────────────────────── */
+checkAPI();
+refreshNeuronInputs();
+</script>
+</body>
+</html>
