@@ -11,6 +11,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
         elif col.lower() == "originlocation":
             rename_map[col] = "OriginLocation"
     return df.rename(columns=rename_map)
+
 def get_preprocessed_df() -> pd.DataFrame:
     df = pd.read_csv("penguins.csv")
     df = normalize_columns(df)
@@ -22,9 +23,11 @@ def get_preprocessed_df() -> pd.DataFrame:
     le = LabelEncoder()
     df["OriginLocation"] = le.fit_transform(df["OriginLocation"])
     return df
+
+
 def split(data: pd.DataFrame):
-    encoder = LabelEncoder()
-    data["Species"] = encoder.fit_transform(data["Species"])
+    # encoder = LabelEncoder()
+    # data["Species"] = encoder.fit_transform(data["Species"])
     train_data = data.iloc[np.r_[0:30, 50:80, 100:130]].copy()
     test_data  = data.iloc[np.r_[30:50, 80:100, 130:150]].copy()
     X_train = train_data.drop(columns=["Species"])

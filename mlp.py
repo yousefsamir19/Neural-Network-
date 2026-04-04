@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler,OneHotEncoder
+from sklearn.metrics import confusion_matrix
 
 class Layer:
     def __init__(self, input_num, output_num, bias):
@@ -113,14 +113,42 @@ class mlp:
                 self.update_weights(self.X_train.iloc[i,:])
     
     def test(self,X_test,y_test):
-        for x in X_test:
-            self.forward_pass(x)
-        
-        acutal = y_test
-        output_layer = len(self.layers) - 1
-        predicted = self.layer_num[output_layer].outputs
-        print(predicted)
-        for i in range(len(self.X_test)):
-            if acutal == predicted:
-                count+=1
+        # Initialize lists to store individual predictions
+        y_true_indices = []
+        y_pred_indices = []
+        count = 0
+
+        for row in range(len(X_test)):
+            self.forward_pass(X_test.iloc[row,:])
+            actual = np.array(y_test.iloc[row,:])
+            
+            output_layer = len(self.layers) - 1
+            predicted = self.layers[output_layer].outputs
+            
+            # Convert one-hot arrays to single integer class labels
+            actual_class = np.argmax(actual)
+            pred_class = np.argmax(predicted)
+            
+            # Store labels for the confusion matrix
+            y_true_indices.append(actual_class)
+            y_pred_indices.append(pred_class)
+            
+            # accuracy logic (ex. comparing [1 0 0] to [1 0 0] = true)
+            pred_threshold = (predicted == predicted.max()).astype(int)
+            if (actual == pred_threshold).all():
+                count += 1
+
+        #-------------METRICS-----------------
+        # Accuracy
         accuracy = (count / len(X_test)) * 100
+        print(f"Accuracy: {accuracy}%")
+
+        # Confusion Matrix
+        cm = confusion_matrix(y_true_indices, y_pred_indices)
+        class_labels = y_test.columns
+        df_cm = pd.DataFrame(cm, 
+                            index=[f"Actual {label}" for label in class_labels], 
+                            columns=[f"Predicted {label}" for label in class_labels])
+        print(df_cm)
+
+
