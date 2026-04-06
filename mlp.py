@@ -91,6 +91,8 @@ class mlp:
             self.layers[i].weights = self.layers[i].weights + self.learning_rate * np.dot(input.T, self.layers[i].errors)
 
     def train(self):
+        stopped_epoch = self.epochs
+        final_train_mse = 0.0
         for epo in range(self.epochs):
             epoch_loss = 0.0
             for i in range(len(self.X_train)):
@@ -103,6 +105,8 @@ class mlp:
                 epoch_loss += float(np.mean((actual - predicted) ** 2))
             
             avg_mse = epoch_loss / len(self.X_train)
+            final_train_mse = avg_mse
+            stopped_epoch = epo + 1
             if (avg_mse < self.mse_threshold)&(self.mse_flag):
                 break
 
@@ -117,7 +121,7 @@ class mlp:
 
         train_accuracy = sum(t == p for t, p in zip(y_true, y_pred)) / len(y_true) * 100
         train_cm       = confusion_matrix(y_true, y_pred).tolist()
-        return train_accuracy, train_cm
+        return train_accuracy, train_cm, stopped_epoch, round(final_train_mse, 6)
 
     def test(self, X_test, y_test):
         y_true, y_pred = [], []

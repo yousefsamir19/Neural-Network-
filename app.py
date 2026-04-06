@@ -71,7 +71,11 @@ def train_model():
         )
 
         # ── Train — early stopping handled inside mlp.train() ─────────────
-        train_accuracy, train_cm = model.train()
+        train_result = model.train()
+        train_accuracy = train_result[0]
+        train_cm       = train_result[1]
+        stopped_epoch  = train_result[2] if len(train_result) > 2 else epochs
+        train_mse      = train_result[3] if len(train_result) > 3 else None
 
         # ── Test ──────────────────────────────────────────────────────────
         test_accuracy, avg_loss, test_cm = model.test(X_test, y_test)
@@ -85,6 +89,8 @@ def train_model():
             "accuracy"        : round(test_accuracy, 2),
             "train_accuracy"  : round(train_accuracy, 2),
             "loss"            : round(avg_loss, 4),
+            "train_mse"       : train_mse,
+            "stopped_epoch"   : stopped_epoch,
             "confusion_matrix": test_cm,
             "train_cm"        : train_cm,
             "weights"         : weights,

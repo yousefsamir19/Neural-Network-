@@ -253,45 +253,49 @@ body{display:flex}
    METRICS PANEL
    ═══════════════════════════════════════════════════════════════════ */
 .metrics{
-  width:192px;min-width:192px;background:var(--side);
+  width:420px;min-width:420px;background:var(--side);
   border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;
 }
 .metrics-head{
-  padding:10px 14px;border-bottom:1px solid var(--border);
+  padding:10px 16px;border-bottom:1px solid var(--border);
   font-family:'Orbitron',monospace;font-size:9.5px;font-weight:700;
-  letter-spacing:2px;color:var(--violet);position:relative;
+  letter-spacing:2px;color:var(--violet);position:relative;flex-shrink:0;
 }
 .metrics-head::after{
   content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
   background:linear-gradient(90deg,transparent,var(--violet),transparent);opacity:.28;
 }
-.metrics-body{padding:12px;display:flex;flex-direction:column;gap:12px}
+.metrics-body{padding:12px;display:flex;flex-direction:column;gap:10px}
+
+/* Row wrapper for side-by-side pairs */
+.m-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
 .m-card{
   background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:11px;
-  transition:border-color .4s,box-shadow .4s;
+  transition:border-color .4s,box-shadow .4s;min-width:0;
 }
 .m-card.lit{border-color:rgba(29,232,168,.22);box-shadow:0 0 10px rgba(29,232,168,.07)}
 .m-card-title{font-family:'Fira Code',monospace;font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:var(--text-lo);margin-bottom:8px}
 .acc-val{
-  font-family:'Orbitron',monospace;font-size:28px;font-weight:900;
+  font-family:'Orbitron',monospace;font-size:26px;font-weight:900;
   color:var(--text-lo);letter-spacing:1px;
   transition:color .6s,text-shadow .6s;
 }
 .acc-val.lit{color:var(--green);text-shadow:0 0 18px rgba(29,232,168,.38)}
-.loss-val{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;color:var(--text-lo);letter-spacing:1px;transition:color .6s,text-shadow .6s}
+.loss-val{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:var(--text-lo);letter-spacing:1px;transition:color .6s,text-shadow .6s}
 .loss-val.lit{color:var(--orange);text-shadow:0 0 14px rgba(255,122,48,.32)}
-.placeholder{font-family:'Fira Code',monospace;font-size:8.5px;color:var(--text-lo);text-align:center;padding:12px 0;line-height:1.9}
+.placeholder{font-family:'Fira Code',monospace;font-size:8px;color:var(--text-lo);text-align:center;padding:10px 0;line-height:1.9}
 
 /* Confusion matrix */
-.cm-grid{display:grid;grid-template-columns:20px repeat(3,1fr);gap:2px}
-.cm-head{font-size:6.5px;font-family:'Fira Code',monospace;color:var(--text-lo);text-align:center;padding:2px 0}
+.cm-grid{display:grid;grid-template-columns:18px repeat(3,1fr);gap:2px}
+.cm-head{font-size:6px;font-family:'Fira Code',monospace;color:var(--text-lo);text-align:center;padding:2px 0}
 .cm-cell{
   aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-  font-size:9.5px;font-family:'Fira Code',monospace;border-radius:2px;
+  font-size:9px;font-family:'Fira Code',monospace;border-radius:2px;
   background:#0b0b1e;color:var(--text-lo);transition:background .4s,color .4s;
 }
 .cm-cell.diag{background:#081a12;color:var(--green)}
-.cm-cell.lbl{background:transparent;font-size:6.5px}
+.cm-cell.lbl{background:transparent;font-size:6px}
 
 /* Arch info */
 .arch-info{font-family:'Fira Code',monospace;font-size:8.5px;color:var(--text-lo);line-height:2}
@@ -405,10 +409,25 @@ body{display:flex}
 <aside class="metrics">
   <div class="metrics-head">METRICS</div>
   <div class="metrics-body">
+    <!-- Architecture full width -->
     <div class="m-card"><div class="m-card-title">Architecture</div><div class="arch-info" id="arch-info">—</div></div>
-    <div class="m-card" id="card-acc"><div class="m-card-title">Test Accuracy</div><div class="acc-val" id="acc-val">—</div></div>
-    <div class="m-card" id="card-cm"><div class="m-card-title">Confusion Matrix</div><div id="cm-wrap"><div class="placeholder">Run the model<br>to see results</div></div></div>
-    <div class="m-card" id="card-loss"><div class="m-card-title">Test MSE Loss</div><div class="loss-val" id="loss-val">—</div></div>
+    <!-- Accuracy pair -->
+    <div class="m-row">
+      <div class="m-card" id="card-acc"><div class="m-card-title">Test Accuracy</div><div class="acc-val" id="acc-val">—</div></div>
+      <div class="m-card" id="card-train-acc"><div class="m-card-title">Train Accuracy</div><div class="acc-val" id="train-acc-val">—</div></div>
+    </div>
+    <!-- Confusion matrix pair -->
+    <div class="m-row">
+      <div class="m-card" id="card-cm"><div class="m-card-title">Test Conf. Matrix</div><div id="cm-wrap"><div class="placeholder">Run the model<br>to see results</div></div></div>
+      <div class="m-card" id="card-train-cm"><div class="m-card-title">Train Conf. Matrix</div><div id="train-cm-wrap"><div class="placeholder">Run the model<br>to see results</div></div></div>
+    </div>
+    <!-- Loss pair -->
+    <div class="m-row">
+      <div class="m-card" id="card-loss"><div class="m-card-title">Test MSE Loss</div><div class="loss-val" id="loss-val">—</div></div>
+      <div class="m-card" id="card-train-loss"><div class="m-card-title">Train MSE Loss</div><div class="loss-val" id="train-loss-val">—</div></div>
+    </div>
+    <!-- Epoch full width -->
+    <div class="m-card" id="card-epoch"><div class="m-card-title">Stopped at Epoch</div><div class="loss-val" id="epoch-val" style="color:var(--text-lo)">—</div></div>
   </div>
 </aside>
 
@@ -459,21 +478,22 @@ function buildLayers(c) {
 
 /* ─── Position computation (FIXED spacing — no more stretching) ──────────── */
 function computePos(layers, W, H) {
-  const PAD   = 78;
-  const nL    = layers.length;
-  const xStep = nL > 1 ? (W - 2*PAD) / (nL-1) : 0;
-  const LABEL_H = 18;  // reserve bottom space for layer label
+  const PAD     = 78;
+  const LABEL_H = 22;   // reserve bottom for layer label
+  const TOP_PAD = 36;   // min top margin (room for bias + labels)
+  const nL      = layers.length;
+  const xStep   = nL > 1 ? (W - 2*PAD) / (nL-1) : 0;
+  const usableH = H - LABEL_H - TOP_PAD;
 
   return layers.map((layer, li) => {
     const x    = PAD + li * xStep;
     const disp = Math.min(layer.size, MAX_DISP);
 
     // Fixed-pitch vertical span, centred in usable height
-    const span      = (disp - 1) * NODE_PITCH;
-    const biasShift = layer.hasBias ? BIAS_GAP * 0.5 : 0;
-    // Midpoint: canvas centre, shifted slightly down to make room for bias above
-    const midY      = (H - LABEL_H) * 0.5 + biasShift;
-    const topY      = midY - span * 0.5;
+    const span = (disp - 1) * NODE_PITCH;
+    const midY = TOP_PAD + usableH * 0.5;
+    // Clamp so nodes never go above TOP_PAD or below usableH+TOP_PAD
+    const topY = Math.max(TOP_PAD + NR, Math.min(midY - span * 0.5, TOP_PAD + usableH - span - NR));
 
     const nodes = [], extra = layer.size - MAX_DISP;
 
@@ -485,8 +505,11 @@ function computePos(layers, W, H) {
         trunc: ni===disp-1 && extra>0, extra: extra>0 ? extra+1 : 0});
     }
 
-    if (layer.hasBias)
-      nodes.push({x, y: topY - BIAS_GAP, isBias:true, idx:disp, lbl:'1'});
+    // Bias node always sits BIAS_GAP above first regular node, clamped to top
+    if (layer.hasBias) {
+      const biasY = Math.max(TOP_PAD - 4, topY - BIAS_GAP);
+      nodes.push({x, y: biasY, isBias:true, idx:disp, lbl:'1'});
+    }
 
     return {x, nodes, layer, topY, botY: topY + span};
   });
@@ -703,11 +726,13 @@ function _updateArch(layers, c) {
 
 /* ─── Count-up animation ─────────────────────────────────────────────────── */
 function countUp(el, to, dur, dec, suf) {
+  const val = parseFloat(to);
+  if (!isFinite(val)) { el.textContent = '—'; return; }
   const t0 = performance.now();
   const tick = now => {
     const p = Math.min((now-t0)/dur, 1);
     const e = 1 - Math.pow(1-p, 3);
-    el.textContent = (to*e).toFixed(dec) + suf;
+    el.textContent = (val*e).toFixed(dec) + suf;
     if (p<1) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -811,30 +836,64 @@ async function runModel() {
     svg.style.transition='opacity .30s ease'; svg.style.opacity='1';
 
     /* Metrics count-up */
-    const accEl  = $('acc-val');
-    const lossEl = $('loss-val');
+    const accEl       = $('acc-val');
+    const trainAccEl  = $('train-acc-val');
+    const lossEl      = $('loss-val');
+    const trainLossEl = $('train-loss-val');
+    const epochEl     = $('epoch-val');
+
     accEl.classList.add('lit');  lossEl.classList.add('lit');
     $('card-acc').classList.add('lit'); $('card-loss').classList.add('lit');
-    countUp(accEl,  data.accuracy, 900, 1, '%');
-    countUp(lossEl, data.loss,     700, 4, '');
 
-    /* Confusion matrix with staggered pop-in */
-    const cls=['Ad','Ch','Ge'], cm=data.confusion_matrix;
-    let html='<div class="cm-grid">';
-    html+='<div class="cm-head"></div>';
-    cls.forEach(l=>{html+=`<div class="cm-head">${l}</div>`});
-    for (let i=0;i<3;i++) {
-      html+=`<div class="cm-cell lbl">${cls[i]}</div>`;
-      for (let j=0;j<3;j++) {
-        const diag=i===j;
-        const del=((i*3+j)*.046).toFixed(3);
-        html+=`<div class="cm-cell${diag?' diag':''}"
-          style="animation:popIn .30s cubic-bezier(.34,1.56,.64,1) both ${del}s;opacity:0">
-          ${cm[i]?.[j]??'–'}</div>`;
+    // Train accuracy card
+    trainAccEl.style.color = 'var(--cyan)';
+    trainAccEl.style.textShadow = '0 0 14px rgba(0,229,255,.32)';
+    $('card-train-acc').classList.add('lit');
+
+    // Train MSE card
+    trainLossEl.style.color = 'var(--violet)';
+    trainLossEl.style.textShadow = '0 0 14px rgba(157,120,248,.32)';
+    $('card-train-loss').classList.add('lit');
+
+    // Epoch card — green if early stopped, cyan if ran full
+    const earlyStop = data.stopped_epoch < parseInt($('epochs').value);
+    epochEl.style.color = earlyStop ? 'var(--green)' : 'var(--cyan)';
+    epochEl.style.textShadow = earlyStop
+      ? '0 0 14px rgba(29,232,168,.32)'
+      : '0 0 14px rgba(0,229,255,.22)';
+    $('card-epoch').classList.add('lit');
+
+    countUp(accEl,       data.accuracy,       900, 1, '%');
+    countUp(trainAccEl,  data.train_accuracy,  800, 1, '%');
+    countUp(lossEl,      data.loss,            700, 4, '');
+    countUp(trainLossEl, data.train_mse,       700, 6, '');
+    countUp(epochEl,     data.stopped_epoch,   600, 0, '');
+
+    /* Confusion matrix helper */
+    function buildCM(cm, offset) {
+      const cls=['Ad','Ch','Ge'];
+      let html='<div class="cm-grid">';
+      html+='<div class="cm-head"></div>';
+      cls.forEach(l=>{html+=`<div class="cm-head">${l}</div>`});
+      for (let i=0;i<3;i++) {
+        html+=`<div class="cm-cell lbl">${cls[i]}</div>`;
+        for (let j=0;j<3;j++) {
+          const diag=i===j;
+          const del=((i*3+j)*.046 + offset).toFixed(3);
+          html+=`<div class="cm-cell${diag?' diag':''}"
+            style="animation:popIn .30s cubic-bezier(.34,1.56,.64,1) both ${del}s;opacity:0">
+            ${cm[i]?.[j]??'–'}</div>`;
+        }
       }
+      return html+'</div>';
     }
-    html+='</div>';
-    $('cm-wrap').innerHTML=html;
+
+    /* Test confusion matrix */
+    $('cm-wrap').innerHTML = buildCM(data.confusion_matrix, 0);
+
+    /* Train confusion matrix */
+    $('train-cm-wrap').innerHTML = buildCM(data.train_cm, 0.05);
+    $('card-train-cm').classList.add('lit');
 
     /* Status */
     const stopped = c.mseFlag;
