@@ -11,7 +11,7 @@ class Layer:
         self.weights = np.random.randn(input_num + self.bias, output_num)
 
 class mlp:
-    def __init__(self,X_train ,y , hidden_layers, hidden_neurons, learning_rate, epochs, bias, activation_function):
+    def __init__(self,X_train ,y , hidden_layers, hidden_neurons, learning_rate, epochs, bias, activation_function,mse,mse_flag=0):
         self.X_train = X_train.copy()
         self.y = y
         output_size = len(self.y.columns)
@@ -25,6 +25,8 @@ class mlp:
         self.layer_num = hidden_layers + 1
         self.hidden_neurons = hidden_neurons
         self.activation_function = activation_function
+        self.mse_threshold = mse
+        self.mse_flag = mse_flag
 
         for i in range(hidden_layers + 1):
             if i == 0:
@@ -60,7 +62,7 @@ class mlp:
                 input = np.hstack((input, np.ones((input.shape[0], 1))))
             net = np.dot(input, self.layers[i].weights)
             self.layers[i].nets = net
-            y = self.activationFn(0, net)
+            y = self.activationFn(self.activation_function, net)
             self.layers[i].outputs = y
 
     def backpropagation(self, Y_t):
@@ -90,10 +92,19 @@ class mlp:
 
     def train(self):
         for epo in range(self.epochs):
+            epoch_loss = 0.0
             for i in range(len(self.X_train)):
                 self.forward_pass(self.X_train.iloc[i,:])
                 self.backpropagation(self.y.iloc[i,:])
                 self.update_weights(self.X_train.iloc[i,:])
+            #   MSE CHECK
+                actual    = np.array(self.y.iloc[i, :]).flatten()
+                predicted = self.layers[-1].outputs.flatten()
+                epoch_loss += float(np.mean((actual - predicted) ** 2))
+            
+            avg_mse = epoch_loss / len(self.X_train)
+            if (avg_mse < self.mse_threshold)&(self.mse_flag):
+                break
 
         # Evaluate on training set after all epochs
         y_true, y_pred = [], []

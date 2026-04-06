@@ -139,6 +139,11 @@ body{display:flex}
   box-shadow:0 0 9px var(--cyan-g),inset 2px 0 8px rgba(0,229,255,.04);
 }
 .ctrl-input:hover:not(:focus){border-color:var(--border-hi)}
+.ctrl-input:disabled{
+  opacity:.35;cursor:not-allowed;
+  border-color:var(--border)!important;
+  box-shadow:none!important;background:var(--panel)!important;
+}
 
 /* Checkbox */
 .cb-row{display:flex;align-items:center;gap:9px}
@@ -333,6 +338,24 @@ body{display:flex}
       </div>
     </div>
 
+    <div class="cg">
+      <div class="cg-label">Early Stopping</div>
+      <div class="cb-row">
+        <input type="checkbox" class="ctrl-cb" id="mse-flag" onchange="toggleMseThresh()">
+        <label class="cb-lbl" for="mse-flag">Stop when MSE &lt; threshold</label>
+      </div>
+    </div>
+
+    <div class="cg" id="mse-thresh-cg" style="opacity:.35;transition:opacity .25s ease">
+      <div class="cg-label" style="display:flex;justify-content:space-between;align-items:center">
+        <span>MSE Threshold</span>
+        <span id="mse-hint" style="color:var(--cyan);font-size:8px;letter-spacing:1px">0.0100</span>
+      </div>
+      <input type="number" class="ctrl-input" id="mse-thresh"
+        value="0.01" min="0.00001" max="10" step="0.001"
+        disabled oninput="$('mse-hint').textContent=parseFloat(this.value||0.01).toFixed(4)">
+    </div>
+
     <div class="divider"></div>
 
     <div class="cg">
@@ -386,8 +409,6 @@ body{display:flex}
     <div class="m-card" id="card-acc"><div class="m-card-title">Test Accuracy</div><div class="acc-val" id="acc-val">—</div></div>
     <div class="m-card" id="card-cm"><div class="m-card-title">Confusion Matrix</div><div id="cm-wrap"><div class="placeholder">Run the model<br>to see results</div></div></div>
     <div class="m-card" id="card-loss"><div class="m-card-title">Test MSE Loss</div><div class="loss-val" id="loss-val">—</div></div>
-    <div class="m-card" id="card-train-acc"><div class="m-card-title">Train Accuracy</div><div class="acc-val" id="train-acc-val">—</div></div>
-    <div class="m-card" id="card-train-cm"><div class="m-card-title">Train Confusion Matrix</div><div id="train-cm-wrap"><div class="placeholder">Run the model<br>to see results</div></div></div>
   </div>
 </aside>
 
@@ -415,13 +436,15 @@ let isBusy   = false;
 /* ─── DOM helpers ────────────────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
 const cfg = () => ({
-  actfn  : document.querySelector('input[name="actfn"]:checked')?.value ?? 'sigmoid',
-  epochs : Math.max(1, parseInt($('epochs').value)  || 100),
-  lr     : Math.max(1e-4, parseFloat($('lr').value) || 0.1),
-  bias   : $('bias-cb').checked,
-  nL     : Math.min(5, Math.max(1, parseInt($('num-layers').value) || 1)),
-  neurons: Array.from({length: parseInt($('num-layers').value)||1}, (_,i) =>
-             Math.max(1, parseInt($(`nrn-${i}`)?.value) || 4))
+  actfn    : document.querySelector('input[name="actfn"]:checked')?.value ?? 'sigmoid',
+  epochs   : Math.max(1, parseInt($('epochs').value)  || 100),
+  lr       : Math.max(1e-4, parseFloat($('lr').value) || 0.1),
+  bias     : $('bias-cb').checked,
+  mse      : Math.max(1e-5, parseFloat($('mse-thresh').value) || 0.01),
+  mseFlag  : $('mse-flag').checked,
+  nL       : Math.min(5, Math.max(1, parseInt($('num-layers').value) || 1)),
+  neurons  : Array.from({length: parseInt($('num-layers').value)||1}, (_,i) =>
+               Math.max(1, parseInt($(`nrn-${i}`)?.value) || 4))
 });
 
 /* ─── Layer model ────────────────────────────────────────────────────────── */
@@ -767,6 +790,8 @@ async function runModel() {
         learning_rate      : c.lr,
         epochs             : c.epochs,
         bias               : c.bias,
+        mse_threshold      : c.mse,
+        mse_flag           : c.mseFlag,
         activation_function: c.actfn
       })
     });
@@ -811,33 +836,9 @@ async function runModel() {
     html+='</div>';
     $('cm-wrap').innerHTML=html;
 
-    /* Training metrics */
-    if (data.train_accuracy != null) {
-      const taEl = $('train-acc-val');
-      taEl.classList.add('lit');
-      $('card-train-acc').classList.add('lit');
-      countUp(taEl, data.train_accuracy, 900, 1, '%');
-    }
-    if (data.train_cm) {
-      const cls=['Ad','Ch','Ge'], cm=data.train_cm;
-      let html='<div class="cm-grid">';
-      html+='<div class="cm-head"></div>';
-      cls.forEach(l=>{html+=`<div class="cm-head">${l}</div>`});
-      for (let i=0;i<3;i++) {
-        html+=`<div class="cm-cell lbl">${cls[i]}</div>`;
-        for (let j=0;j<3;j++) {
-          const diag=i===j;
-          const del=((i*3+j)*.046).toFixed(3);
-          html+=`<div class="cm-cell${diag?' diag':''}"
-            style="animation:popIn .30s cubic-bezier(.34,1.56,.64,1) both ${del}s;opacity:0">
-            ${cm[i]?.[j]??'–'}</div>`;
-        }
-      }
-      html+='</div>';
-      $('train-cm-wrap').innerHTML=html;
-    }
-
-    stxt.textContent='complete';
+    /* Status */
+    const stopped = c.mseFlag;
+    stxt.textContent = stopped ? `early stop complete` : `complete`;
 
   } catch(err) {
     svg.style.opacity='1';
@@ -850,6 +851,16 @@ async function runModel() {
     scan.classList.remove('active');
     isBusy=false;
   }
+}
+
+/* ─── MSE threshold toggle ───────────────────────────────────────────────── */
+function toggleMseThresh() {
+  const enabled = $('mse-flag').checked;
+  const cg      = $('mse-thresh-cg');
+  const inp     = $('mse-thresh');
+  inp.disabled         = !enabled;
+  cg.style.opacity     = enabled ? '1' : '.35';
+  cg.style.pointerEvents = enabled ? 'auto' : 'none';
 }
 
 /* ─── Wire events ────────────────────────────────────────────────────────── */

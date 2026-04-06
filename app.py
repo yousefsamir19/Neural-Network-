@@ -19,7 +19,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
-from sklearn.metrics import confusion_matrix
 
 # Project modules — must be in the same directory
 from preprocessing import get_preprocessed_df, split
@@ -47,11 +46,12 @@ def train_model():
         learning_rate  = float(body.get("learning_rate", 0.1))
         epochs         = max(1, int(body.get("epochs", 100)))
         bias           = bool(body.get("bias", False))
+        mse_threshold  = float(body.get("mse_threshold", 0.01))
+        mse_flag       = int(bool(body.get("mse_flag", False)))
         act_str        = body.get("activation_function", "sigmoid")
-        # mlp.py uses actFn+1 internally: 0→sigmoid(1), 1→tanh(2)
-        activation_fn  = 0 if act_str == "sigmoid" else 1
+        activation_fn  = 0 if act_str == "sigmoid" else 1   # 0→sigmoid, 1→tanh
 
-        # Guard: hidden_neurons list length must match hidden_layers
+        # Guard: ensure hidden_neurons length matches hidden_layers
         while len(hidden_neurons) < hidden_layers:
             hidden_neurons.append(4)
         hidden_neurons = hidden_neurons[:hidden_layers]
@@ -60,33 +60,35 @@ def train_model():
         df = get_preprocessed_df()
         X_train, y_train, X_test, y_test, sc = split(df)
 
-        # ── Build & train model ───────────────────────────────────────────
+        # ── Build model (mse + mse_flag now live inside mlp) ─────────────
         model = MLP(
             X_train, y_train,
             hidden_layers, hidden_neurons,
             learning_rate, epochs,
-            bias, activation_fn
+            bias, activation_fn,
+            mse=mse_threshold,
+            mse_flag=mse_flag,
         )
+
+        # ── Train — early stopping handled inside mlp.train() ─────────────
         train_accuracy, train_cm = model.train()
 
-        # ── Evaluate on test set ──────────────────────────────────────────
-        # (replicate test() logic so we can capture the values)
-        accuracy,avg_loss,cm = model.test(X_test,y_test)
-        # ── Snapshot weights ──────────────────────────────────────────────
-        weights = [layer.weights.tolist() for layer in model.layers]
+        # ── Test ──────────────────────────────────────────────────────────
+        test_accuracy, avg_loss, test_cm = model.test(X_test, y_test)
 
-        # ── Snapshot activations (forward pass on first training sample) ──
+        # ── Snapshot weights & activations for visualization ──────────────
+        weights     = [layer.weights.tolist() for layer in model.layers]
         model.forward_pass(X_train.iloc[0, :])
         activations = [layer.outputs.flatten().tolist() for layer in model.layers]
 
         return jsonify({
-            "accuracy"           : round(accuracy, 2),
-            "loss"               : round(avg_loss, 4),
-            "confusion_matrix"   : cm,
-            "train_accuracy"     : round(train_accuracy, 2),
-            "train_cm"           : train_cm,
-            "weights"            : weights,
-            "activations"        : activations,
+            "accuracy"        : round(test_accuracy, 2),
+            "train_accuracy"  : round(train_accuracy, 2),
+            "loss"            : round(avg_loss, 4),
+            "confusion_matrix": test_cm,
+            "train_cm"        : train_cm,
+            "weights"         : weights,
+            "activations"     : activations,
         })
 
     except Exception as exc:
